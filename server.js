@@ -1,45 +1,41 @@
-var wechat = require("wechat");
-var express = require('express');
-var fs = require('fs');
-var https = require('https');
-var accesstoken = null;
-var ticket = null;
-var port = 18080;
+const path = require('path');
+const wechat = require('wechat');
+const Koa = require('koa');
+const render = require('koa-art-template');
+const Router = require('koa-router');
+const logger = require('koa-logger')
+const bodyParser = require('koa-bodyparser');
+const port = 18080;
 
+const app = new Koa();
+const router = new Router();
 
-var app = express();
-/*引入模板引擎*/
-var handlebars = require('express3-handlebars')
-	.create({
-		defaultLayout: 'main'
-	});
+render(app, {
+	root: path.join(__dirname, 'views'),
+	extname: '.art'
+});
 
-app.use(express.query());
-app.use(require('body-parser')());
-app.engine('handlebars', handlebars.engine);
-app.set('view engine', 'handlebars');
+app.use(logger());
 
-var routes = require('./routes/index');
-var autoViews = {};
-app.use(function(req, res, next){
-	var path = req.path.toLowerCase();
-	//检查缓存，如果有就渲染这个视图
-	if(autoViews[path]) return res.render(autoViews[path]);
-	//如果没有缓存，就检查有无.handlebars文件能匹配
-	if(fs.existsSync(__dirname + '/views' + path + '.handlebars')){
-		autoViews[path] = path.replace(/^\//, '');
-		return res.render(autoViews[path]);
+app.use(bodyParser());
+
+app.use(async(ctx, next) => {
+	try {
+		await next();
+	} catch (err) {
+		ctx.response.status = err.statusCode || err.status || 500;
+		ctx.response.body = err.message;
+		ctx.app.emit('error', err, ctx);
 	}
-	next();
-})
+});
 
-app.use('/wechat', wechat('weixin', function (req, res, next) {
-    var message = req.weixin;
-    if(message.MsgType == 'text'){
-          res.reply({ type: "text", content: "您输入的文本 " + message.Content});  
-    }
-}));
+const routes = require('./routes/index')(router);
 
-routes(app);
+app.use(router.routes());
 
 app.listen(port);
+
+app.on('error', (err) => {
+	console.log('app error: '+ err.message);
+	console.log(err);
+});

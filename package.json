@@ -1,18 +1,21 @@
 {
-  "name": "bae-nodejs",
+  "name": "wechat-jssdk-demo",
   "version": "1.0.0",
-  "author": "bae",
-  "description": "The first bae nodejs app!",
+  "author": "izhangxu",
+  "description": "微信js-sdk",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "body-parser": "^1.14.2",
-    "connect": "^3.4.0",
-    "express": "^4.13.3",
-    "express3-handlebars": "^0.5.2",
+    "art-template": "^4.12.2",
+    "co-wechat": "^2.3.0",
     "jssha": "^1.6.0",
-    "wechat": "^2.0.3",
-    "sha1": "~1.1.0"
+    "koa": "^2.4.1",
+    "koa-art-template": "^1.1.1",
+    "koa-bodyparser": "^4.2.0",
+    "koa-logger": "^3.1.0",
+    "koa-router": "^7.3.0",
+    "sha1": "~1.1.0",
+    "wechat": "^2.0.3"
   }
 }

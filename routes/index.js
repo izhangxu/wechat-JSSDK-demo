@@ -1,119 +1,152 @@
-var https = require('https');
-var jsSHA = require('jssha');
+const https = require('https');
+const jsSHA = require('jssha');
+const appInfo = require('./../apps-info');
+
+const API = {
+	ticket: 'https://api.weixin.qq.com/cgi-bin/ticket/getticket',
+	token: 'https://api.weixin.qq.com/cgi-bin/token'
+};
+/**
+ * 创造随机字符串
+ * @return {String}
+ */
+const createNonceStr = () => {
+	return Math.random().toString(36).substr(2, 15);
+};
+/**
+ * 创建时间戳
+ * @return {String}
+ */
+const createTimestamp = () => {
+	return parseInt(new Date().getTime() / 1000) + '';
+};
+/**
+ * 生成signature
+ * @param  {String} ticket
+ * @param  {String} noncestr
+ * @param  {String} ts
+ * @param  {String} url
+ * @return {String}
+ */
+const createSign = (ticket, noncestr, ts, url) => {
+	const str = 'jsapi_ticket=' + ticket + '&noncestr=' + noncestr + '&timestamp=' + ts + '&url=' + url;
+	const shaObj = new jsSHA(str, 'TEXT');
+	return shaObj.getHash('SHA-1', 'HEX');
+};
 
 
-module.exports = function(app) {
-	var expireTime = 7200 - 100;
-	var getAppsInfo = require('./../apps-info');
-	var appIds = getAppsInfo();
-	var cachedSignatures = {};
-	/*创造随机字符串*/
-	var createNonceStr = function() {
-		return Math.random().toString(36).substr(2, 15);
-	};
-	/*创建时间戳*/
-	var createTimestamp = function() {
-		return parseInt(new Date().getTime() / 1000) + '';
-	};
-	/*创造signature*/
-	var createSign = function(ticket, noncestr, ts, url) {
-		var str = 'jsapi_ticket=' + ticket + '&noncestr=' + noncestr + '&timestamp=' + ts + '&url=' + url;
-		shaObj = new jsSHA(str, 'TEXT');
-		return shaObj.getHash('SHA-1', 'HEX');
-	};
-	/*获取票*/
-	var getTicket = function(url, index, res, accessData) {
-		https.get('https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=' + accessData.access_token + '&type=jsapi', function(_res1) {
-			var str1 = '',
-				resp1;
-			_res1.on('data', function(data) {
-				str1 += data;
+module.exports = function(router) {
+	const expireTime = 7200 - 100;
+
+	let cachedSignatures = {};
+	/**
+	 * 获取票
+	 * @param  {String} url        url
+	 * @param  {Object} accessData token
+	 * @return {Object}            json
+	 */
+	const getTicket = (url, ctx, access_token) => {
+		https.get(API.ticket + '?access_token=' + access_token + '&type=jsapi', (res) => {
+			let rawData = '',
+				resp = {};
+			res.on('data', function(trunk) {
+				rawData += trunk;
 			});
-			_res1.on('end', function() {
-				console.log('return ticket:  ' + str1);
+			res.on('end', function() {
+				console.log('return ticket:  ' + rawData);
 				try {
-					resp1 = JSON.parse(str1);
+					resp = JSON.parse(rawData);
 				} catch (e) {
-					return res.json({
+					ctx.body = {
 						err: '获取ticket出错'
-					});
+					};
+					return;
 				}
-				var appid = appIds[index].appid;
-				var ts = createTimestamp();
-				var nonceStr = createNonceStr();
-				var ticket = resp1.ticket;
-				var signature = createSign(ticket, nonceStr, ts, url);
+				const appid = appInfo.appid;
+				const ts = createTimestamp();
+				const nonceStr = createNonceStr();
+				const ticket = resp.ticket;
+				const signature = createSign(ticket, nonceStr, ts, url);
 
-				cachedSignatures[url] = {
-					nonceStr: nonceStr,
+				const generateData = {
 					appid: appid,
 					timestamp: ts,
+					nonceStr: nonceStr,
 					signature: signature,
-					url: url,
-					ticket: ticket
+					url: url
 				};
 
-				res.json({
-					nonceStr: nonceStr,
-					timestamp: ts,
-					appid: appid,
-					signature: signature,
-					url: url,
-					ticket: ticket
-				});
+				cachedSignatures[url] = generateData;
+				ctx.body = generateData;
 			});
 		});
 	};
-
-	app.get('/fish', function(req, res) {
-		res.render('fish');
-	});
-
-	app.get('/test', function(req, res) {
-		res.render('test', {
-			layout: null
-		});
-	});
-
-	app.post('/sign/:index', function(req, res) {
-		var index = req.params.index;
-		var _url = req.body.url;
-		var signatureObj = cachedSignatures[_url];
+	// 验证
+	router.post('/wx_sign', ctx => {
+		const _url = ctx.request.body.url;
+		const signatureObj = cachedSignatures[_url];
 		if (!_url) {
-			return res.json({
+			ctx.body = {
 				err: '缺少url参数'
-			});
+			};
+			return;
 		}
-		console.log(signatureObj);
+		// console.log(signatureObj);
 		if (signatureObj && signatureObj.timestamp) {
-			var t = createTimestamp() - signatureObj.timestamp;
+			const t = createTimestamp() - signatureObj.timestamp;
 
 			if (t < expireTime && signatureObj.url == _url) {
-				return res.json({
+				ctx.body = {
 					nonceStr: signatureObj.nonceStr,
 					timestamp: signatureObj.timestamp,
 					appid: signatureObj.appid,
 					signature: signatureObj.signature,
-					url: signatureObj.url,
-					tic: signatureObj.tic
-				});
+					url: signatureObj.url
+				};
 			}
 		}
-		https.get('https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=' + appIds[index].appid + '&secret=' + appIds[index].secret, function(_res) {
-			var str = '';
-			_res.on('data', function(data) {
-				str += data;
-			})
-			_res.on('end', function() {
+		/**
+		 * 获取assecs_token
+		 * @param  {String}   appid
+		 * @param  {String}	  secret
+		 * @return {Object}
+		 */
+		https.get(API.token + '?grant_type=client_credential&appid=' + appInfo.appid + '&secret=' + appInfo.secret, (res) => {
+			let rawData1 = '',
+				resp1 = {};
+			res.on('data', (trunk) => {
+				rawData1 += trunk;
+			});
+			res.on('end', () => {
 				try {
-					var resp = JSON.parse(str);
+					resp1 = JSON.parse(rawData1);
 				} catch (e) {
-					return res.json({
+					ctx.body = {
 						err: '解析access_token返回的JSON数据错误'
-					});
+					};
+					return;
 				}
-				getTicket(_url, index, res, resp);
-			})
+				getTicket(_url, ctx, resp1.access_token);
+			});
+		});
+	});
+	// 首页
+	router.get('/', async ctx => {
+		const buttons = [{
+			value: '拍照',
+			id: 'btn1'
+		}, {
+			value: '显示右上角菜单',
+			id: 'btn2'
+		}, {
+			value: '隐藏右上角菜单',
+			id: 'btn3'
+		}, {
+			value: '扫描二维码',
+			id: 'btn4'
+		}];
+		await ctx.render('content', {
+			buttons
 		});
 	});
 };
