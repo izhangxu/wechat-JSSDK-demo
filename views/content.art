@@ -1,0 +1,80 @@
+{{extend './layout'}}
+
+{{block 'title'}}wechat-jssdk{{/block}}
+
+{{block 'content'}}
+<div>
+  	{{include 'button'}}
+</div>
+<script type="text/javascript">
+    // 验证
+    $.ajax({
+        url: '/wx_sign',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            url: location.href.split('#')[0]
+        },
+        success: function(json) {
+            config(json);
+        }
+    });
+    // 加载
+    wx.ready(function() {
+        $('#btn1').on('tap', function(){
+            wx.chooseImage({
+                count: 1, // 默认9
+                sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
+                sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
+                success: function(res) {
+                    var localIds = res.localIds; // 返回选定照片的本地ID列表，localId可以作为img标签的src属性显示图片
+                    alert(localIds);
+                }
+            });
+        });
+
+        //关闭右上角菜单
+        $('#btn3').on('tap', function(){
+            wx.hideOptionMenu();  
+        });
+
+        //显示右上角菜单
+        $('#btn2').on('tap', function(){
+            wx.showOptionMenu();  
+        });
+
+        // 扫码二维码
+        $('#btn4').on('tap', function(){
+            wx.scanQRCode({
+                needResult: 1, // 默认为0，扫描结果由微信处理，1则直接返回扫描结果，
+                scanType: ["qrCode", "barCode"], // 可以指定扫二维码还是一维码，默认二者都有
+                success: function(res) {
+                    var result = res.resultStr; // 当needResult 为 1 时，扫码返回的结果
+                    alert(result);
+                }
+            });
+        });
+    });
+
+    wx.error(function(err) {
+        alert('发生错误了');
+        console.log(err);
+    });
+
+    function config(data) {
+        wx.config({
+            debug: true,
+            appId: data.appid,
+            timestamp: data.timestamp,
+            nonceStr: data.nonceStr,
+            signature: data.signature,
+            jsApiList: [
+                'chooseImage',
+                'hideOptionMenu',
+                'showOptionMenu',
+                'scanQRCode'
+            ]
+        });
+    }
+</script>
+{{/block}}

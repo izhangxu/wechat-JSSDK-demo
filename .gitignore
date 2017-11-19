@@ -1,0 +1,6 @@
+logs
+app.conf
+apps-info.js
+
+npm-debug.log
+node_modules

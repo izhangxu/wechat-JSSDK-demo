@@ -1,0 +1,3 @@
+{{each buttons}}
+	<input type="button" value="{{$value.value}}" id="{{$value.id}}"/>
+{{/each}}

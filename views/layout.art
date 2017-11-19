@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, minimal-ui">
+    <title>{{block 'title'}}My Site{{/block}}</title>
+    {{block 'head'}}
+    <script src="http://res.wx.qq.com/open/js/jweixin-1.2.0.js"></script>
+    <script src="http://cdn.bootcss.com/zepto/1.2.0/zepto.min.js"></script>
+    {{/block}}
+</head>
+<body>
+    {{block 'content'}}{{/block}}
+</body>
+</html>
