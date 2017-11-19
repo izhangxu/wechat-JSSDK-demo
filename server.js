@@ -5,7 +5,7 @@ const render = require('koa-art-template');
 const Router = require('koa-router');
 const logger = require('koa-logger')
 const bodyParser = require('koa-bodyparser');
-const port = 18080;
+const port = process.env.PORT || 3000;
 
 const app = new Koa();
 const router = new Router();
@@ -36,6 +36,6 @@ app.use(router.routes());
 app.listen(port);
 
 app.on('error', (err) => {
-	console.log('app error: '+ err.message);
+	console.log('app error: ' + err.message);
 	console.log(err);
 });

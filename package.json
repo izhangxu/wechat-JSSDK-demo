@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": "8.9.0"
+  },
   "dependencies": {
     "art-template": "^4.12.2",
     "co-wechat": "^2.3.0",
