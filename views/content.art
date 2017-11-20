@@ -23,9 +23,7 @@
     });
     // 加载
     wx.ready(function() {
-        alert(1);
-        alert($);
-        $('#btn1').on('tap', function(){
+        $('#btn1').on('touchend', function(){
             wx.chooseImage({
                 count: 1, // 默认9
                 sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
@@ -38,17 +36,17 @@
         });
 
         //显示右上角菜单
-        $('#btn2').on('tap', function(){
+        $('#btn2').on('touchend', function(){
             wx.showOptionMenu();  
         });
 
         //关闭右上角菜单
-        $('#btn3').on('tap', function(){
+        $('#btn3').on('touchend', function(){
             wx.hideOptionMenu();  
         });
 
         // 扫码二维码
-        $('#btn4').on('tap', function(){
+        $('#btn4').on('touchend', function(){
             wx.scanQRCode({
                 needResult: 1, // 默认为0，扫描结果由微信处理，1则直接返回扫描结果，
                 scanType: ["qrCode", "barCode"], // 可以指定扫二维码还是一维码，默认二者都有
@@ -67,7 +65,7 @@
 
     function config(data) {
         wx.config({
-            debug: true,
+            debug: false,
             appId: data.appid,
             timestamp: data.timestamp,
             nonceStr: data.nonceStr,
