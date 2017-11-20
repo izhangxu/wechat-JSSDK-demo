@@ -16,11 +16,15 @@
             url: location.href.split('#')[0]
         },
         success: function(json) {
-            config(json);
+            if (json.status) {
+                config(json.data);
+            }
         }
     });
     // 加载
     wx.ready(function() {
+        alert(1);
+        alert($);
         $('#btn1').on('tap', function(){
             wx.chooseImage({
                 count: 1, // 默认9
@@ -33,14 +37,14 @@
             });
         });
 
-        //关闭右上角菜单
-        $('#btn3').on('tap', function(){
-            wx.hideOptionMenu();  
-        });
-
         //显示右上角菜单
         $('#btn2').on('tap', function(){
             wx.showOptionMenu();  
+        });
+
+        //关闭右上角菜单
+        $('#btn3').on('tap', function(){
+            wx.hideOptionMenu();  
         });
 
         // 扫码二维码

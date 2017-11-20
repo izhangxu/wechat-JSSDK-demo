@@ -3,9 +3,10 @@ const wechat = require('wechat');
 const Koa = require('koa');
 const render = require('koa-art-template');
 const Router = require('koa-router');
-const logger = require('koa-logger')
+const logger = require('koa-logger');
+const serve = require('koa-static');
 const bodyParser = require('koa-bodyparser');
-const port = process.env.PORT || 3000;
+const port = 18080;
 
 const app = new Koa();
 const router = new Router();
@@ -14,6 +15,8 @@ render(app, {
 	root: path.join(__dirname, 'views'),
 	extname: '.art'
 });
+
+app.use(serve(__dirname + '/mp'));
 
 app.use(logger());
 

@@ -1,6 +1,7 @@
 const https = require('https');
 const jsSHA = require('jssha');
-const appInfo = require('./../apps-info');
+const appInfo = require('../apps-info');
+const token = 'weixin'; // 和微信公众平台基本配置中的相同
 
 const API = {
 	ticket: 'https://api.weixin.qq.com/cgi-bin/ticket/getticket',
@@ -46,38 +47,42 @@ module.exports = function(router) {
 	 * @return {Object}            json
 	 */
 	const getTicket = (url, ctx, access_token) => {
+		console.log('return access_token:  ' + access_token);
 		https.get(API.ticket + '?access_token=' + access_token + '&type=jsapi', (res) => {
-			let rawData = '',
-				resp = {};
+			let rawData = '';
 			res.on('data', function(trunk) {
 				rawData += trunk;
 			});
 			res.on('end', function() {
 				console.log('return ticket:  ' + rawData);
 				try {
-					resp = JSON.parse(rawData);
+					const resp = JSON.parse(rawData);
+					const ts = createTimestamp();
+					const nonceStr = createNonceStr();
+					const ticket = resp.ticket;
+					const signature = createSign(ticket, nonceStr, ts, url);
+
+					const generateData = {
+						appid: appInfo.appid,
+						timestamp: ts,
+						nonceStr: nonceStr,
+						signature: signature,
+						url: url
+					};
+
+					cachedSignatures[url] = generateData;
+					ctx.body = {
+						status: 1,
+						data: generateData,
+						msg: 'success'
+					};
 				} catch (e) {
 					ctx.body = {
-						err: '获取ticket出错'
+						status: 0,
+						data: null,
+						msg: '获取ticket失败'
 					};
-					return;
 				}
-				const appid = appInfo.appid;
-				const ts = createTimestamp();
-				const nonceStr = createNonceStr();
-				const ticket = resp.ticket;
-				const signature = createSign(ticket, nonceStr, ts, url);
-
-				const generateData = {
-					appid: appid,
-					timestamp: ts,
-					nonceStr: nonceStr,
-					signature: signature,
-					url: url
-				};
-
-				cachedSignatures[url] = generateData;
-				ctx.body = generateData;
 			});
 		});
 	};
@@ -87,7 +92,9 @@ module.exports = function(router) {
 		const signatureObj = cachedSignatures[_url];
 		if (!_url) {
 			ctx.body = {
-				err: '缺少url参数'
+				status: 0,
+				data: null,
+				msg: '缺少url参数'
 			};
 			return;
 		}
@@ -97,11 +104,15 @@ module.exports = function(router) {
 
 			if (t < expireTime && signatureObj.url == _url) {
 				ctx.body = {
-					nonceStr: signatureObj.nonceStr,
-					timestamp: signatureObj.timestamp,
-					appid: signatureObj.appid,
-					signature: signatureObj.signature,
-					url: signatureObj.url
+					status: 1,
+					data: {
+						nonceStr: signatureObj.nonceStr,
+						timestamp: signatureObj.timestamp,
+						appid: signatureObj.appid,
+						signature: signatureObj.signature,
+						url: signatureObj.url
+					},
+					msg: 'success'
 				};
 			}
 		}
@@ -112,21 +123,22 @@ module.exports = function(router) {
 		 * @return {Object}
 		 */
 		https.get(API.token + '?grant_type=client_credential&appid=' + appInfo.appid + '&secret=' + appInfo.secret, (res) => {
-			let rawData1 = '',
-				resp1 = {};
+			let rawData1 = '';
 			res.on('data', (trunk) => {
 				rawData1 += trunk;
 			});
 			res.on('end', () => {
 				try {
-					resp1 = JSON.parse(rawData1);
+					const resp1 = JSON.parse(rawData1);
+					console.log('return rawData1: ' + rawData1);
+					getTicket(_url, ctx, resp1.access_token);
 				} catch (e) {
 					ctx.body = {
-						err: '解析access_token返回的JSON数据错误'
+						status: 0,
+						data: null,
+						msg: e
 					};
-					return;
 				}
-				getTicket(_url, ctx, resp1.access_token);
 			});
 		});
 	});
@@ -148,5 +160,21 @@ module.exports = function(router) {
 		await ctx.render('content', {
 			buttons
 		});
+	});
+
+	router.get('/wx', async ctx => {
+		const signature = ctx.query.signature;
+		const timestamp = ctx.query.timestamp;
+		const echostr = ctx.query.echostr;
+		const nonce = ctx.query.nonce;
+		const oriArr = [token, timestamp, nonce];
+		oriArr.sort();
+		const shaObj = new jsSHA(oriArr.join(''), 'TEXT');
+		const scyptoString = shaObj.getHash('SHA-1', 'HEX');
+		if (scyptoString == signature) {
+			ctx.body = echostr;
+		} else {
+			ctx.throw(404);
+		}
 	});
 };
